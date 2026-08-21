@@ -1,0 +1,28 @@
+# Visual Studio / .NET
+.vs/
+.vscode/
+**/[Bb]in/
+**/[Oo]bj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.cache
+*.log
+*.pdb
+*.dll
+*.deps.json
+*.runtimeconfig.json
+*.runtimeconfig.dev.json
+
+# Release distribution (committed to repo)
+!/dist/
+
+# AutoCAD build artifacts
+Build/
+_BuildOutput/
+
+# OS / editor files
+Thumbs.db
+Desktop.ini
+.DS_Store
