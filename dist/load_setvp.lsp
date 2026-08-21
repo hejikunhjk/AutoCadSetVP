@@ -14,7 +14,7 @@
     (progn
       (princ (strcat "\n[SetVP] 正在加载: " dll-path))
       (command "netload" dll-path)
-      (princ "\n[SetVP] 插件已加载！命令行输入: SETVP")
+      (princ "\n[SetVP] 插件已加载！命令行输入: SetVP")
       (princ)
     )
   )
