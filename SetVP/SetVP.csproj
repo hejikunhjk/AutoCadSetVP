@@ -13,9 +13,10 @@
     <NoWarn>$(NoWarn);MSB3277</NoWarn>
   </PropertyGroup>
 
-  <!--
-    WinForms 通过 UseWindowsForms 属性启用，这是 .NET 8 的标准方式。
-  -->
+  <!-- 嵌入 app.manifest 启用 Per-Monitor DPI V2 -->
+  <PropertyGroup>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
 
   <!--
     AutoCAD 2026 托管程序集引用

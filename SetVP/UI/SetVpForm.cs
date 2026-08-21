@@ -26,6 +26,21 @@ public class SetVpForm : Form
 
     private AppSettings _settings;
 
+    /// <summary>
+    /// DPI 缩放比例（1.0 = 100%, 1.5 = 150%）
+    /// </summary>
+    private readonly float _dpiScale = 1.0f;
+
+    /// <summary>
+    /// DPI 缩放辅助方法：将设计时像素值转换为当前 DPI 下的实际像素值
+    /// </summary>
+    private int S(int designPx) => (int)(designPx * _dpiScale);
+
+    /// <summary>
+    /// DPI 缩放辅助方法：将设计时像素值转换为当前 DPI 下的实际像素值（float）
+    /// </summary>
+    private float SF(float designPx) => designPx * _dpiScale;
+
     // UI 控件
     private readonly GroupBox _viewportScopeGroup;
     private readonly RadioButton _rbAllViewports;
@@ -57,28 +72,39 @@ public class SetVpForm : Form
         _settings = settings;
         _preSelectedViewportIds = preSelectedViewportIds;
 
+        // ========== 检测 DPI 缩放比例 ==========
+        // 获取系统 DPI（默认 96，150% 缩放时为 144）
+        using (var g = this.CreateGraphics())
+        {
+            float systemDpi = g.DpiX;
+            _dpiScale = systemDpi / 96f;
+        }
+
         // 窗体基本属性
         Text = "SetVP — 参照图层颜色快速替换";
-        Size = new Size(452, 400);  // 始终以最小尺寸打开
+        Size = new Size(S(452), S(400));  // 始终以最小尺寸打开
         FormBorderStyle = FormBorderStyle.Sizable;
-        MinimumSize = new Size(452, 400);
+        MinimumSize = new Size(S(452), S(400));
         StartPosition = FormStartPosition.CenterScreen;
         MaximizeBox = false;
         MinimizeBox = false;
         BackColor = GdiColor.FromArgb(240, 240, 240);
         KeyPreview = true;
+        // 禁用 WinForms 内置缩放，改用手动 DPI 缩放
+        AutoScaleMode = AutoScaleMode.None;
         KeyDown += (s, e) => { if (e.KeyCode == Keys.Escape) Close(); };
 
         // 字体声明（避免 AutoCAD Font 类冲突）
-        var fontLabel = new GdiFont("Segoe UI", 9F, FontStyle.Regular);
-        var fontButton = new GdiFont("Segoe UI", 9F, FontStyle.Bold);
+        // 字体大小乘以 DPI 缩放比例，确保在高 DPI 下字体足够大
+        var fontLabel = new GdiFont("Segoe UI", 9F * _dpiScale, FontStyle.Regular);
+        var fontButton = new GdiFont("Segoe UI", 9F * _dpiScale, FontStyle.Bold);
 
         // ========== 操作按钮（固定在底部）==========
         _btnApply = new Button
         {
             Text = "应用",
-            Location = new Point(12, 0),
-            Size = new Size(185, 38),
+            Location = new Point(S(12), 0),
+            Size = new Size(S(185), S(38)),
             Font = fontButton,
             BackColor = GdiColor.FromArgb(0, 120, 215),
             ForeColor = GdiColor.White,
@@ -89,8 +115,8 @@ public class SetVpForm : Form
         _btnRestore = new Button
         {
             Text = "还原",
-            Location = new Point(207, 0),
-            Size = new Size(185, 38),
+            Location = new Point(S(207), 0),
+            Size = new Size(S(185), S(38)),
             Font = fontButton,
             BackColor = GdiColor.FromArgb(200, 200, 200),
             ForeColor = GdiColor.Black,
@@ -110,8 +136,8 @@ public class SetVpForm : Form
 
         var colorGrid = new TableLayoutPanel
         {
-            Location = new Point(12, 12),
-            Size = new Size(380, 90),
+            Location = new Point(S(12), S(12)),
+            Size = new Size(S(380), S(90)),
             ColumnCount = 10,
             RowCount = 3,
             BackColor = GdiColor.Transparent
@@ -119,17 +145,17 @@ public class SetVpForm : Form
 
         // 10列×38px=380px
         for (int i = 0; i < 10; i++)
-            colorGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, 38F));
-        colorGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));  // Row 0: ByLayer+RGB
-        colorGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));  // Row 1: ACI 1-9
-        colorGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, 30F));  // Row 2: ACI 250-259
+            colorGrid.ColumnStyles.Add(new ColumnStyle(SizeType.Absolute, SF(38F)));
+        colorGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, SF(30F)));  // Row 0: ByLayer+RGB
+        colorGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, SF(30F)));  // Row 1: ACI 1-9
+        colorGrid.RowStyles.Add(new RowStyle(SizeType.Absolute, SF(30F)));  // Row 2: ACI 250-259
 
         // ===== Row 0: ByLayer (0-4), RGB (5-9) =====
         _rbByLayer = new Button
         {
             Text = "ByLayer",
             FlatStyle = FlatStyle.Flat,
-            Font = new GdiFont("Segoe UI", 8F),
+            Font = new GdiFont("Segoe UI", 8F * _dpiScale),
             BackColor = GdiColor.FromArgb(230, 230, 230),
             ForeColor = GdiColor.Black,
             Tag = "ByLayer",
@@ -151,7 +177,7 @@ public class SetVpForm : Form
         {
             Text = rgbText,
             FlatStyle = FlatStyle.Flat,
-            Font = new GdiFont("Segoe UI", 8F),
+            Font = new GdiFont("Segoe UI", 8F * _dpiScale),
             BackColor = ParseRgbToGdiColor(initialRgb),
             ForeColor = GdiColor.Black,
             Tag = "CustomRgb",
@@ -231,8 +257,8 @@ public class SetVpForm : Form
         // 颜色区 GroupBox（标题显示当前颜色）
         _colorGroup = new GroupBox
         {
-            Location = new Point(12, 0),
-            Size = new Size(404, 102),
+            Location = new Point(S(12), 0),
+            Size = new Size(S(404), S(102)),
             Font = fontLabel,
             Text = GetColorModeText()
         };
@@ -252,16 +278,15 @@ public class SetVpForm : Form
         _viewportScopeGroup = new GroupBox
         {
             Text = "视口作用域",
-            Location = new Point(12, 0),
-            Size = new Size(380, 56),
+            Location = new Point(S(12), 0),
+            Size = new Size(S(380), S(56)),
             Font = fontLabel
         };
 
         var vpFlow = new FlowLayoutPanel
         {
-            Location = new Point(16, 22),
-            Size = new Size(348, 24),
             FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,  // 禁止换行，确保3个单选框在一行
             BackColor = GdiColor.Transparent
         };
 
@@ -293,13 +318,19 @@ public class SetVpForm : Form
         vpFlow.Controls.AddRange(new Control[] { _rbAllViewports, _rbCurrentViewport, _rbSelectedViewports });
         _viewportScopeGroup.Controls.Add(vpFlow);
 
-        // 控制行：只选参照 + 过滤文本框 + 全选 + 反选
+        // 控制行：只选参照 + 过滤文本框 + 全选 + 反选（FlowLayoutPanel，自动处理换行）
+        var layerControlFlow = new FlowLayoutPanel
+        {
+            FlowDirection = FlowDirection.LeftToRight,
+            WrapContents = false,  // 不换行，确保所有控件在一行内
+            BackColor = GdiColor.Transparent
+        };
+
         _btnSelectRefOnly = new Button
         {
             Text = "只选参照",
-            Location = new Point(16, 18),
-            Size = new Size(62, 26),
-            Font = new GdiFont("Segoe UI", 8F),
+            Size = new Size(S(62), S(27)),
+            Font = new GdiFont("Segoe UI", 8F * _dpiScale),
             FlatStyle = FlatStyle.Flat
         };
         _btnSelectRefOnly.Click += (s, e) =>
@@ -313,8 +344,7 @@ public class SetVpForm : Form
         _txtLayerFilter = new TextBox
         {
             Text = "*",
-            Location = new Point(84, 20),
-            Size = new Size(60, 22),
+            Size = new Size(S(90), S(27)),
             Font = fontLabel
         };
         _txtLayerFilter.TextChanged += (s, e) => ApplyLayerFilter();
@@ -322,9 +352,8 @@ public class SetVpForm : Form
         _btnSelectAllFiltered = new Button
         {
             Text = "全选",
-            Location = new Point(150, 18),
-            Size = new Size(50, 26),
-            Font = new GdiFont("Segoe UI", 8F),
+            Size = new Size(S(50), S(27)),
+            Font = new GdiFont("Segoe UI", 8F * _dpiScale),
             FlatStyle = FlatStyle.Flat
         };
         _btnSelectAllFiltered.Click += (s, e) =>
@@ -336,9 +365,8 @@ public class SetVpForm : Form
         _btnInvertFiltered = new Button
         {
             Text = "反选",
-            Location = new Point(206, 18),
-            Size = new Size(50, 26),
-            Font = new GdiFont("Segoe UI", 8F),
+            Size = new Size(S(50), S(27)),
+            Font = new GdiFont("Segoe UI", 8F * _dpiScale),
             FlatStyle = FlatStyle.Flat
         };
         _btnInvertFiltered.Click += (s, e) =>
@@ -347,10 +375,12 @@ public class SetVpForm : Form
                 _lbLayers.SetItemChecked(i, !_lbLayers.GetItemChecked(i));
         };
 
+        layerControlFlow.Controls.AddRange(new Control[] { _btnSelectRefOnly, _txtLayerFilter, _btnSelectAllFiltered, _btnInvertFiltered });
+
         _lbLayers = new CheckedListBox
         {
-            Location = new Point(16, 50),
-            Size = new Size(348, 200),
+            Location = new Point(S(16), S(50)),
+            Size = new Size(S(348), S(200)),
             Font = fontLabel,
             CheckOnClick = true
         };
@@ -361,11 +391,12 @@ public class SetVpForm : Form
         _layersGroup = new GroupBox
         {
             Text = "参照图层",
-            Location = new Point(12, 0),
-            Size = new Size(380, 260),
+            Location = new Point(S(12), 0),
+            Size = new Size(S(380), S(260)),
             Font = fontLabel
         };
-        _layersGroup.Controls.AddRange(new Control[] { _btnSelectRefOnly, _txtLayerFilter, _btnSelectAllFiltered, _btnInvertFiltered, _lbLayers });
+        _layersGroup.Controls.Add(layerControlFlow);
+        _layersGroup.Controls.Add(_lbLayers);
 
         // ========== 布局排列（从下往上）==========
         // 视口组在最上，图层组在中间（可拉伸），颜色组和按钮组固定在底部
@@ -403,47 +434,85 @@ public class SetVpForm : Form
 
     /// <summary>
     /// 从下往上布局：按钮→颜色组→图层组（中间拉伸）→视口组
+    /// 所有尺寸乘以 DPI 缩放比例，确保高 DPI 下控件不溢出
     /// </summary>
     private void LayoutControls()
     {
         int w = ClientSize.Width - 24;   // 减去左右各 12px 边距
         int h = ClientSize.Height;
-        int margin = 12;
-        int gap = 4;
+        int margin = (int)(12 * _dpiScale);
+        int gap = (int)(4 * _dpiScale);
+
+        // GroupBox 标题区域高度（随字体缩放）
+        int titleH = TextRenderer.MeasureText("测量", _viewportScopeGroup.Font).Height + 6;
+
+        // 按钮高度
+        int btnH = (int)(38 * _dpiScale);
+
+        // 颜色组高度：colorGrid 的 3 行 × 30px + 标题区域 + 上下边距
+        int colorGridH = (int)(30 * _dpiScale) * 3;  // 3行颜色按钮
+        int colorH = titleH + colorGridH + (int)(14 * _dpiScale);
+
+        // 视口组高度：足够容纳一行 RadioButton（FlowLayoutPanel 自动布局）
+        int vpH = titleH + (int)(30 * _dpiScale);
 
         // 固定高度
-        int btnH = 38 + gap + 3;          // 按钮行高度（1/3下部空白）
-        int colorH = 102;                  // 颜色组高度（3行×26px=78px + padding 24px）
-        int vpH = 56;                     // 视口组高度（56px确保内部控件完整）
+        int btnRowH = btnH + gap;
 
-        // 可用高度给图层组
-        int availH = h - btnH - colorH - vpH - gap * 3 - margin * 2;
-        int layerH = Math.Max(60, availH);  // 最小 60px
+        // 可用高度给图层组（中间拉伸）
+        int availH = h - btnRowH - colorH - vpH - gap * 3 - margin * 2;
+        int layerH = Math.Max((int)(60 * _dpiScale), availH);
 
         // 视口组：最上
         _viewportScopeGroup.Location = new Point(margin, margin);
         _viewportScopeGroup.Size = new Size(w, vpH);
+
+        // 视口组内的 FlowLayoutPanel 位置（标题下方，左对齐）
+        var vpFlow = _viewportScopeGroup.Controls.OfType<FlowLayoutPanel>().FirstOrDefault();
+        if (vpFlow != null)
+        {
+            vpFlow.Location = new Point((int)(12 * _dpiScale), titleH - (int)(4 * _dpiScale));
+            vpFlow.Size = new Size(w - (int)(24 * _dpiScale), (int)(30 * _dpiScale));
+        }
 
         // 图层组：中间（从视口组下方延伸）
         _layersGroup.Location = new Point(margin, margin + vpH + gap);
         _layersGroup.Size = new Size(w, layerH);
 
         // 更新图层列表大小（填满 GroupBox 剩余空间）
-        int listTop = 50;
-        int listH = Math.Max(60, _layersGroup.Height - listTop - margin);
-        _lbLayers.Location = new Point(16, listTop);
-        _lbLayers.Size = new Size(w - 32, listH);
+        int layerControlRowH = (int)(30 * _dpiScale);  // 控制行高度
+        int listTop = titleH + (int)(8 * _dpiScale) + layerControlRowH + (int)(5 * _dpiScale);
+        int listH = Math.Max((int)(60 * _dpiScale), _layersGroup.Height - listTop - margin);
+        _lbLayers.Location = new Point((int)(16 * _dpiScale), listTop);
+        _lbLayers.Size = new Size(w - (int)(32 * _dpiScale), listH);
+
+        // 图层组内的控制按钮行（FlowLayoutPanel）
+        int layerControlY = titleH + (int)(6 * _dpiScale);
+        var layerControlPanel = _layersGroup.Controls.OfType<FlowLayoutPanel>().FirstOrDefault();
+        if (layerControlPanel != null)
+        {
+            layerControlPanel.Location = new Point((int)(12 * _dpiScale), layerControlY - (int)(6 * _dpiScale));
+            layerControlPanel.Size = new Size(w - (int)(24 * _dpiScale), layerControlRowH);
+            layerControlPanel.BringToFront();  // 将按钮行前置，避免被列表框遮挡
+        }
 
         // 颜色组：在图层组下方
         _colorGroup.Location = new Point(margin, margin + vpH + gap + layerH + gap);
         _colorGroup.Size = new Size(w, colorH);
 
+        // 颜色组内的 grid 位置
+        var colorGrid = _colorGroup.Controls[0] as TableLayoutPanel;
+        if (colorGrid != null)
+        {
+            colorGrid.Location = new Point((int)(12 * _dpiScale), titleH + (int)(4 * _dpiScale));
+        }
+
         // 按钮：在最底部
         int btnRowY = margin + vpH + gap + layerH + gap + colorH + gap;
         _btnApply.Location = new Point(margin, btnRowY);
-        _btnApply.Size = new Size((w - gap) / 2, 38);
+        _btnApply.Size = new Size((w - gap) / 2, btnH);
         _btnRestore.Location = new Point(margin + (w - gap) / 2 + gap, btnRowY);
-        _btnRestore.Size = new Size((w - gap) / 2, 38);
+        _btnRestore.Size = new Size((w - gap) / 2, btnH);
     }
 
     /// <summary>
@@ -464,7 +533,7 @@ public class SetVpForm : Form
             Text = $"{aciIndex}",
             Tag = aciIndex,
             FlatStyle = FlatStyle.Flat,
-            Font = new GdiFont("Segoe UI", 7F),
+            Font = new GdiFont("Segoe UI", 7F * _dpiScale),
             BackColor = acadColor,
             ForeColor = (acadColor.GetBrightness() < 0.5f) ? GdiColor.White : GdiColor.Black,
             TextAlign = ContentAlignment.MiddleCenter,
